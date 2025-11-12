@@ -13,7 +13,7 @@ use GuzzleHttp\Exception\RequestException;
 use http\Env\Response;
 
 readonly class DockerActionManager {
-    private const string API_VERSION = 'v1.41';
+    private const string API_VERSION = 'v1.44';
     private Client $guzzleClient;
 
     public function __construct(
@@ -283,6 +283,10 @@ readonly class DockerActionManager {
                     }
                 } else if ($port === '%TALK_PORT%') {
                     $port = $this->configurationManager->GetTalkPort();
+                    // Skip publishing talk port if it is set to the same value like the apache port
+                    if ($port === $this->configurationManager->GetApachePort()) {
+                        continue;
+                    }
                 }
                 $ipBinding = $value->ipBinding;
                 if ($ipBinding === '%APACHE_IP_BINDING%') {
@@ -538,6 +542,7 @@ readonly class DockerActionManager {
             'RESTORE_EXCLUDE_PREVIEWS' => $this->configurationManager->GetRestoreExcludePreviews(),
             'APACHE_PORT' => $this->configurationManager->GetApachePort(),
             'TALK_PORT' => $this->configurationManager->GetTalkPort(),
+            'TURN_DOMAIN' => $this->configurationManager->GetTurnDomain(),
             'NEXTCLOUD_MOUNT' => $this->configurationManager->GetNextcloudMount(),
             'BACKUP_RESTORE_PASSWORD' => $this->configurationManager->GetBorgRestorePassword(),
             'CLAMAV_ENABLED' => $this->configurationManager->isClamavEnabled() ? 'yes' : '',
@@ -837,7 +842,6 @@ readonly class DockerActionManager {
                     [
                         'json' => [
                             'Name' => $network,
-                            'CheckDuplicate' => true,
                             'Driver' => 'bridge',
                             'Internal' => false,
                         ]
