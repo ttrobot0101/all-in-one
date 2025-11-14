@@ -164,10 +164,10 @@ class ConfigurationManager
 
     public function isWhiteboardEnabled() : bool {
         $config = $this->GetConfig();
-        if (isset($config['isWhiteboardEnabled']) && $config['isWhiteboardEnabled'] === 0) {
-            return false;
-        } else {
+        if (isset($config['isWhiteboardEnabled']) && $config['isWhiteboardEnabled'] === 1) {
             return true;
+        } else {
+            return false;
         }
     }
 
@@ -315,8 +315,9 @@ class ConfigurationManager
         }
 
         // Skip domain validation if opted in to do so
-        if (!$this->shouldDomainValidationBeSkipped($skipDomainValidation)) {
-
+        if ($this->shouldDomainValidationBeSkipped($skipDomainValidation)) {
+            error_log('Skipping domain validation');
+        } else {
             $dnsRecordIP = gethostbyname($domain);
             if ($dnsRecordIP === $domain) {
                 $dnsRecordIP = '';
@@ -909,7 +910,6 @@ class ConfigurationManager
 
     public function shouldDomainValidationBeSkipped(bool $skipDomainValidation) : bool {
         if ($skipDomainValidation || getenv('SKIP_DOMAIN_VALIDATION') === 'true') {
-            error_log('Skipping domain validation');
             return true;
         }
         return false;
