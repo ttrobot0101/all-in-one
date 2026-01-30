@@ -383,7 +383,7 @@ readonly class DockerActionManager {
             // Make volumes read only in case of borgbackup container. The viewer makes them writeable
             $isReadOnly = $container->identifier === 'nextcloud-aio-borgbackup';
 
-            foreach ($this->configurationManager->GetAdditionalBackupDirectoriesArray() as $additionalBackupDirectories) {
+            foreach ($this->configurationManager->getAdditionalBackupDirectoriesArray() as $additionalBackupDirectories) {
                 if ($additionalBackupDirectories !== '') {
                     if (!str_starts_with($additionalBackupDirectories, '/')) {
                         $mounts[] = ["Type" => "volume", "Source" => $additionalBackupDirectories, "Target" => "/docker_volumes/" . $additionalBackupDirectories, "ReadOnly" => $isReadOnly];
@@ -420,7 +420,13 @@ readonly class DockerActionManager {
 
             // Additional Collabora options
             if ($this->configurationManager->collaboraAdditionalOptions !== '') {
-                $requestBody['Cmd'] = [$this->configurationManager->collaboraAdditionalOptions];
+                // Split the list of Collabora options, which are stored as a string but must be assigned as an array.
+                // To avoid problems with whitespace or dashes in option arguments we use a regular expression
+                // that splits the string at every position where a whitespace is followed by '--o:'.
+                // The leading whitespace is removed in the split but the following characters are not.
+                // Example: "--o:example_config1='some thing' --o:example_config2=something-else" -> ["--o:example_config1='some thing'", "--o:example_config2=something-else"] 
+                $regEx = '/\s+(?=--o:)/';
+                $requestBody['Cmd'] = preg_split($regEx, rtrim($this->configurationManager->collaboraAdditionalOptions));
             }
         }
 
@@ -940,7 +946,7 @@ readonly class DockerActionManager {
     }
 
     public function GetAndGenerateSecretWrapper(string $secretId): string {
-        return $this->configurationManager->GetAndGenerateSecret($secretId);
+        return $this->configurationManager->getAndGenerateSecret($secretId);
     }
 
     public function isNextcloudImageOutdated(): bool {
