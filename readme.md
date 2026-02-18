@@ -90,9 +90,10 @@ Included are:
 ## How to use this?
 
 The steps below are written for Linux. For platform-specific guidance see:
-- macOS: [How to run AIO on macOS](#how-to-run-aio-on-macos)
-- Windows: [How to run AIO on Windows](#how-to-run-aio-on-windows)
-- Synology DSM: [How to run AIO on Synology DSM](#how-to-run-aio-on-synology-dsm)
+- macOS: [How to run AIO on macOS?](#how-to-run-aio-on-macos)
+- Windows: [How to run AIO on Windows?](#how-to-run-aio-on-windows)
+- Unraid: [How to run AIO on Unraid?](#how-to-run-aio-on-unraid)
+- Synology DSM: [How to run AIO on Synology DSM?](#how-to-run-aio-on-synology-dsm)
 - TrueNAS SCALE: [Can I run AIO on TrueNAS SCALE?](#can-i-run-aio-on-truenas-scale)
 
 > [!IMPORTANT]  
@@ -205,6 +206,7 @@ https://your-domain-that-points-to-this-server.tld:8443
     - [Are other ports than the default 443 for Nextcloud supported?](#are-other-ports-than-the-default-443-for-nextcloud-supported)
     - [Can I run Nextcloud in a subdirectory on my domain?](#can-i-run-nextcloud-in-a-subdirectory-on-my-domain)
     - [How can I access Nextcloud locally?](#how-can-i-access-nextcloud-locally)
+    - [How to overwrite the local DNS resolution for some domains or add extra hosts to the containers?](#how-to-overwrite-the-local-dns-resolution-for-some-domains-or-add-extra-hosts-to-the-containers)
     - [How to skip the domain validation?](#how-to-skip-the-domain-validation)
     - [How to resolve firewall problems with Fedora Linux, RHEL OS, CentOS, SUSE Linux and others?](#how-to-resolve-firewall-problems-with-fedora-linux-rhel-os-centos-suse-linux-and-others)
     - [What can I do to fix the internal or reserved ip-address error?](#what-can-i-do-to-fix-the-internal-or-reserved-ip-address-error)
@@ -239,6 +241,7 @@ https://your-domain-that-points-to-this-server.tld:8443
 - [Guides](#guides)
     - [How to run AIO on macOS?](#how-to-run-aio-on-macos)
     - [How to run AIO on Windows?](#how-to-run-aio-on-windows)
+    - [How to run AIO on Unraid?](#how-to-run-aio-on-unraid)
     - [How to run AIO on Synology DSM](#how-to-run-aio-on-synology-dsm)
     - [How to run AIO with Portainer?](#how-to-run-aio-with-portainer)
     - [Can I run AIO on TrueNAS SCALE?](#can-i-run-aio-on-truenas-scale)
@@ -376,6 +379,12 @@ Now that this is out of the way, the recommended way how to access Nextcloud loc
 - https://howchoo.com/pi/pi-hole-setup together with https://web.archive.org/web/20221203223505/https://docs.callitkarma.me/posts/PiHole-Local-DNS/
 - https://dockerlabs.collabnix.com/intermediate/networking/Configuring_DNS.html
 Apart from that there is now a community container that can be added to the AIO stack: https://github.com/nextcloud/all-in-one/tree/main/community-containers/pi-hole
+
+### How to overwrite the local DNS resolution for some domains or add extra hosts to the containers?
+
+For some use cases, you might need to overwrite the local DNS resolution of some domains inside the containers. On Linux, you can do so either by using a local DNS server as described in the section above and add a local DNS entry into the dns server and make your containers use that DNS server.
+
+On Linux, depending on your network and docker configuration, it might also work to simply edit the `/etc/hosts` file. Add your custom entry like `172.18.0.1 mail.example.com` as additional line to the file and restart docker which should automatically push the entry to all docker containers.
 
 ### How to skip the domain validation?
 If you are completely sure that you've configured everything correctly and are not able to pass the domain validation, you may skip the domain validation by adding `--env SKIP_DOMAIN_VALIDATION=true` to the docker run command of the mastercontainer (but before the last line `ghcr.io/nextcloud-releases/all-in-one:latest`! If it was started already, you will need to stop the mastercontainer, remove it (no data will be lost) and recreate it using the docker run command that you initially used).
@@ -599,6 +608,23 @@ Also, you may be interested in adjusting Nextcloud's Datadir to store the files 
 
 > [!NOTE]  
 > Almost all commands in this project's documentation use `sudo docker ...`. Since `sudo` is not available on Windows, you simply remove `sudo` from the commands and they should work.  
+
+### How to run AIO on Unraid?
+
+Generally on Unraid, before installing Nextcloud AIO, you should make sure to specify a directory for all docker related files instead of using the default docker image before continuing the installation process. See this guide for more details: https://forums.unraid.net/topic/103924-how-to-turn-my-docker-file-to-a-docker-folder/#comment-962317
+
+Additionally, you might need to create a custom user script to start all sibling containers of AIO automatically whenever the server reboots (since the docker plugin in Unraid does not respect the normal docker restart-policy that is configured for all AIO containers). See the User scripts docs: https://docs.unraid.net/unraid-os/using-unraid-to/run-docker-containers/managing-and-customizing-containers/#user-scripts-plugin. You would need to use a script like the one below and use the schedule option `@reboot` to start the containers automatically.
+```bash
+#!/bin/bash
+
+# Wait 120 seconds for other server components to start correctly
+sleep 120
+
+# Execute the actual command
+docker exec --env START_CONTAINERS=1 nextcloud-aio-mastercontainer /daily-backup.sh`
+```
+
+Apart from that, the installation of AIO should work like on "normal" Linux. So refer to the Linux instructions for installation.
 
 ### How to run AIO on Synology DSM
 On Synology, there are two things different in comparison to Linux: instead of using `--volume /var/run/docker.sock:/var/run/docker.sock:ro`, you need to use `--volume /volume1/docker/docker.sock:/var/run/docker.sock:ro` to run it. You also need to add `--env WATCHTOWER_DOCKER_SOCKET_PATH="/volume1/docker/docker.sock"`to the docker run command of the mastercontainer (but before the last line `ghcr.io/nextcloud-releases/all-in-one:latest`). Additionally, you likely need to adjust the internally used api version. See [this documentation](#how-to-adjust-the-internally-used-docker-api-version). Apart from that it should work and behave the same like on Linux. Obviously the Synology Docker GUI will not work with that so you will need to either use SSH or create a user-defined script task in the task scheduler as the user 'root' in order to run the command.
@@ -856,7 +882,7 @@ Be aware that this solution does not back up files and folders that are mounted 
 Backed up will get all important data of your Nextcloud AIO instance required to restore the instance, like the database, your files and configuration files of the mastercontainer and else. Files and folders that are mounted into Nextcloud using the external storage app are not getting backed up. There is currently no way to exclude the data directory because it would require hacks like running files:scan and would make the backup solution much more unreliable (since the database and your files/folders need to stay in sync). If you still don't want your datadirectory to be backed up, see https://github.com/nextcloud/all-in-one#how-to-enable-automatic-updates-without-creating-a-backup-beforehand for options (there is a hint what needs to be backed up in which order).
 
 ### How to adjust borgs retention policy?
-The built-in borg-based backup solution has by default a retention policy of `--keep-within=7d --keep-weekly=4 --keep-monthly=6`. See https://borgbackup.readthedocs.io/en/stable/usage/prune.html for what these values mean. You can adjust the retention policy by providing `--env BORG_RETENTION_POLICY="--keep-within=7d --keep-weekly=4 --keep-monthly=6"` to the docker run command of the mastercontainer (but before the last line `ghcr.io/nextcloud-releases/all-in-one:latest`! If it was started already, you will need to stop the mastercontainer, remove it (no data will be lost) and recreate it using the docker run command that you initially used) and customize the value to your fitting. ⚠️ Please make sure that this value is valid, otherwise backup pruning will bug out!
+The built-in borg-based backup solution has by default a retention policy of `--keep-within=7d --keep-weekly=4 --keep-monthly=6`. See https://borgbackup.readthedocs.io/en/stable/usage/prune.html for what these values mean. You can adjust the retention policy by providing `--env BORG_RETENTION_POLICY="--keep-within=7d --keep-weekly=4 --keep-monthly=6"` to the docker run command of the mastercontainer (but before the last line `ghcr.io/nextcloud-releases/all-in-one:latest`! If it was started already, you will need to stop the mastercontainer, remove it (no data will be lost) and recreate it using the docker run command that you initially used) and customize the value to your fitting. ⚠️ Please make sure that this value is valid, otherwise backup pruning will bug out! Also, don't include the `-a` or `--glob-archives` option, since AIO already provides it and you can't override it. See https://github.com/nextcloud/all-in-one/pull/7616
 
 ### How to migrate from AIO to AIO?
 If you have the borg backup feature enabled, you can copy it over to the new host and restore from the backup. This guide assumes the new installation data dir will be on `/mnt/datadir`, you can adjust the steps if it's elsewhere.
