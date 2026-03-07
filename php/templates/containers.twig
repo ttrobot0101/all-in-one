@@ -90,7 +90,7 @@
                     {% elseif is_mastercontainer_update_available == true %}
                         <h2>Mastercontainer update</h2>
                         <p>⚠️ A mastercontainer update is available. Please click on the button below to update it. Afterwards, you will be able to proceed with the setup.</p>
-                        <form method="POST" action="api/docker/watchtower" class="xhr">
+                        <form method="POST" action="api/docker/watchtower" target="overlay-log">
                             <input type="hidden" name="{{csrf.keys.name}}" value="{{csrf.name}}">
                             <input type="hidden" name="{{csrf.keys.value}}" value="{{csrf.value}}">
                             <input type="submit" value="Update mastercontainer" />
@@ -161,7 +161,7 @@
                                         <p><span class="status success"></span> Last {{ borg_backup_mode }} successful! (<a href="log?id=nextcloud-aio-borgbackup" target="_blank">Logs</a>)</p>
                                         {% if borg_backup_mode == 'test' %}
                                             <p>Feel free to check the integrity of the backup archive below before starting the restore process in order to make ensure that the restore will work. This can take a long time though depending on the size of the backup archive and is thus not required.</p>
-                                            <form method="POST" action="api/docker/backup-check" class="xhr">
+                                            <form method="POST" action="api/docker/backup-check" target="overlay-log">
                                                 <input type="hidden" name="{{csrf.keys.name}}" value="{{csrf.name}}">
                                                 <input type="hidden" name="{{csrf.keys.value}}" value="{{csrf.value}}">
                                                 <input type="submit" value="Check backup integrity"/>
@@ -264,7 +264,7 @@
                             {% else %}
                                 <p>It seems at least one container was not able to start correctly and is currently restarting.</p>
                                 <p>To break this endless loop, you can stop the containers below and investigate the issue in the container logs before starting the containers again.</p>
-                                <form method="POST" action="api/docker/stop" class="xhr">
+                                <form method="POST" action="api/docker/stop" target="overlay-log">
                                     <input type="hidden" name="{{csrf.keys.name}}" value="{{csrf.name}}">
                                     <input type="hidden" name="{{csrf.keys.value}}" value="{{csrf.value}}">
                                     <input type="submit" value="Stop containers" />
@@ -317,7 +317,7 @@
                                     <p>You can find all changes <a target="_blank" href="https://github.com/nextcloud-releases/all-in-one/commits/main"><strong>here</strong></a></p>
                                 {% endif %}
                             {% endif %}
-                            <form method="POST" action="api/docker/stop" class="xhr">
+                            <form method="POST" action="api/docker/stop" target="overlay-log">
                                 <input type="hidden" name="{{csrf.keys.name}}" value="{{csrf.name}}">
                                 <input type="hidden" name="{{csrf.keys.value}}" value="{{csrf.value}}">
                                 <input type="submit" value="Stop containers" />
@@ -332,7 +332,7 @@
                             {% endif %}
                             {% if is_mastercontainer_update_available == true %}
                                 <p>⚠️ A mastercontainer update is available. Please click on the button below to update it.</p>
-                                <form method="POST" action="api/docker/watchtower" class="xhr">
+                                <form method="POST" action="api/docker/watchtower" target="overlay-log">
                                     <input type="hidden" name="{{csrf.keys.name}}" value="{{csrf.name}}">
                                     <input type="hidden" name="{{csrf.keys.value}}" value="{{csrf.value}}">
                                     <input type="submit" value="Update mastercontainer" />
@@ -484,7 +484,7 @@
 
                                             <h3>Backup check</h3>
                                             <p>Click on the button below to perform a backup integrity check. This is an option that verifies that your backup is intact. It shouldn't be needed in most situations.</p>
-                                            <form method="POST" action="api/docker/backup-check" class="xhr">
+                                            <form method="POST" action="api/docker/backup-check" target="overlay-log">
                                                 <input type="hidden" name="{{csrf.keys.name}}" value="{{csrf.name}}">
                                                 <input type="hidden" name="{{csrf.keys.value}}" value="{{csrf.value}}">
                                                 <input type="submit" value="Check backup integrity" onclick="return confirm('Check backup integrity? Are you sure that you want to check the backup? This can take a long time depending on the size of your backup.')" />
