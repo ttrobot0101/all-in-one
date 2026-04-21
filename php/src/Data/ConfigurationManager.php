@@ -14,6 +14,10 @@ class ConfigurationManager
 
     private bool $noWrite = false;
 
+    private string $dailyBackupFileCache = '';
+
+    private int $dailyBackupFileMtime = 0;
+
     public string $aioToken {
         get => $this->get('AIO_TOKEN', '');
         set { $this->set('AIO_TOKEN', $value); }
@@ -298,6 +302,9 @@ class ConfigurationManager
         if ($this->config === [] && file_exists(DataConst::GetConfigFile()))
         {
             $configContent = (string)file_get_contents(DataConst::GetConfigFile());
+            if ($configContent === '') {
+                throw new \RuntimeException("The config file " . DataConst::GetConfigFile() . " is empty. It may have been truncated due to low disk space. Please restore it from a backup.");
+            }
             $this->config = json_decode($configContent, true, 512, JSON_THROW_ON_ERROR);
         }
 
@@ -698,7 +705,21 @@ class ConfigurationManager
         if ($df !== false && (int)$df < $size) {
             throw new InvalidSettingConfigurationException(DataConst::GetDataDirectory() . " does not have enough space for writing the config file! Not writing it back!");
         }
-        file_put_contents(DataConst::GetConfigFile(), $content);
+        // Write to a temp file first to avoid truncating the config file if the
+        // disk fills up mid-write. rename() is atomic on POSIX filesystems, so the
+        // original config is never touched until the new content is fully on disk.
+        $tempFile = DataConst::GetConfigFile() . '.tmp';
+        if (file_put_contents($tempFile, $content) === false) {
+            // The file probably wasn't created, but better check nonetheless.
+            if (file_exists($tempFile)) {
+                unlink($tempFile);
+            }
+            throw new InvalidSettingConfigurationException("Failed to write temporary config file: " . $tempFile);
+        }
+        if (!rename($tempFile, DataConst::GetConfigFile())) {
+            unlink($tempFile);
+            throw new InvalidSettingConfigurationException("Failed to rename " . $tempFile . " to " . DataConst::GetConfigFile());
+        }
         $this->config = [];
     }
 
@@ -760,23 +781,47 @@ class ConfigurationManager
             $time .= PHP_EOL;
         }
         file_put_contents(DataConst::GetDailyBackupTimeFile(), $time);
+        $this->dailyBackupFileCache = '';
+        $this->dailyBackupFileMtime = 0;
+    }
+
+    private function getDailyBackupFileContent() : string {
+        $file = DataConst::GetDailyBackupTimeFile();
+        if (!file_exists($file)) {
+            $this->dailyBackupFileCache = '';
+            $this->dailyBackupFileMtime = 0;
+            return '';
+        }
+        $mtime = filemtime($file);
+        if ($mtime !== false && $this->dailyBackupFileMtime === $mtime && $this->dailyBackupFileCache !== '') {
+            return $this->dailyBackupFileCache;
+        }
+        $content = file_get_contents($file);
+        if ($content === false || $content === '') {
+            return '';
+        }
+        if ($mtime !== false) {
+            $this->dailyBackupFileCache = $content;
+            $this->dailyBackupFileMtime = $mtime;
+        }
+        return $content;
     }
 
     public function getDailyBackupTime() : string {
-        if (!file_exists(DataConst::GetDailyBackupTimeFile())) {
+        $content = $this->getDailyBackupFileContent();
+        if ($content === '') {
             return '';
         }
-        $dailyBackupFile = (string)file_get_contents(DataConst::GetDailyBackupTimeFile());
-        $dailyBackupFileArray = explode("\n", $dailyBackupFile);
+        $dailyBackupFileArray = explode("\n", $content);
         return $dailyBackupFileArray[0];
     }
 
     public function areAutomaticUpdatesEnabled() : bool {
-        if (!file_exists(DataConst::GetDailyBackupTimeFile())) {
+        $content = $this->getDailyBackupFileContent();
+        if ($content === '') {
             return false;
         }
-        $dailyBackupFile = (string)file_get_contents(DataConst::GetDailyBackupTimeFile());
-        $dailyBackupFileArray = explode("\n", $dailyBackupFile);
+        $dailyBackupFileArray = explode("\n", $content);
         if (isset($dailyBackupFileArray[1]) && $dailyBackupFileArray[1] === 'automaticUpdatesAreNotEnabled') {
             return false;
         } else {
@@ -788,11 +833,10 @@ class ConfigurationManager
         if (file_exists(DataConst::GetDailyBackupTimeFile())) {
             unlink(DataConst::GetDailyBackupTimeFile());
         }
+        $this->dailyBackupFileCache = '';
+        $this->dailyBackupFileMtime = 0;
     }
 
-    /**
-     * @throws InvalidSettingConfigurationException
-     */
     public function setAdditionalBackupDirectories(string $additionalBackupDirectories) : void {
         $additionalBackupDirectoriesArray = explode("\n", $additionalBackupDirectories);
         $validDirectories = '';
