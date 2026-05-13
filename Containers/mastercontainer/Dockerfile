@@ -5,7 +5,7 @@ FROM docker:29.4.1-cli AS docker
 ARG CADDY_REMOTE_HOST_HASH=b21775afa730ffb52a24ddff310c8a6d1fd37276
 
 # Caddy is a requirement
-FROM caddy:2.11.2-builder-alpine AS caddy
+FROM caddy:2.11.3-builder-alpine AS caddy
 RUN set -ex; \
     xcaddy build --with github.com/muety/caddy-remote-host@"$CADDY_REMOTE_HOST_HASH"; \
     /usr/bin/caddy list-modules
