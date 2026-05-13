@@ -5,7 +5,7 @@ COPY --chmod=775 start.sh /start.sh
 COPY --chmod=775 healthcheck.sh /healthcheck.sh
 
 ENV RECORDING_VERSION=v0.2.1
-    ALLOW_ALL=false \
+ENV ALLOW_ALL=false \
     HPB_PROTOCOL=https \
     NC_PROTOCOL=https \
     SKIP_VERIFY=false \
